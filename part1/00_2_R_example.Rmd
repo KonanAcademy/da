@@ -1,0 +1,138 @@
+---
+title: "00_2. R 분석 예제 - 뉴욕 타임즈 홈페이지 광고 분석"
+author: "김무성"
+date: "2015년 2월 23일"
+output:
+  html_document:
+    keep_md: yes
+---
+
+---------------------------
+
+# 목표
+ * [1]의 예제. 2012년 5월 중 뉴욕타임즈 홈페이지에 기록된 하루 분량의 광고 노출횟수와 클릭 횟수를 담은 데이터
+ * 다음을 분석한다(어느 특정 날짜. 이 문서에서는 nyt1.csv의 데이터만)
+   - 사용자를 "<18", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"로 범주화 하기
+   - 6개 나이 범주에 대한 노출횟수와 클릭률(CTR)의 분포를 도표로 나타내기
+   - 사용자들의 클릭 행동에 기반하여 그들을 분할하거나 범주화하는 새로운 변수를 정의
+   - 데이터를 탐색하고, 사용자 세부 집단 혹은 인구통계적 집단을 시각적으로, 그리고 양적으로 비교
+   - 데이터 요약하는 지표 산출
+
+
+-----------------------------
+
+# 분석
+ * 데이터 읽기, 파악, 전처리
+ * 사용자의 나이 범주화
+ * 나이 범주에 대한 노출횟수와 클릭률 파악
+ * 클릭 행동에 기반한 사용자 범주화
+ 
+----------------------
+
+### 데이터 읽기, 파악, 전처리
+
+ * Age : 나이
+ * Gender : 성별(0=여성, 1=남성)
+ * Impressions : 노출횟수
+ * Clicks : 클릭횟수
+ * Signed_in : 로그인 횟수
+ 
+```{r}
+# 자료 소스 - https://github.com/oreillymedia/doing_data_science
+data1 <- read.csv("./00_data/nytimes/nyt1.csv")
+
+# 간략히 데이터 확인
+head(data1)
+
+# 데이터 변수들 확인
+str(data1)
+
+# 요약 통계 확인
+summary(data1)
+```
+
+----------------
+
+### 사용자의 나이 범주화
+
+```{r}
+# 나이 범주화 하기 
+data1$agecat <- cut(data1$Age, c(-Inf, 0, 18, 24, 34, 44, 54, 64, Inf))
+head(data1)
+summary(data1)
+
+# 괄호로 묶기
+# install.packages("doBy") # 패키지 설치. 한번만 설치하면 된다.
+library(doBy) # 패키지 로딩
+
+siterange <- function(x){c(length(x), min(x), mean(x), max(x))}
+summaryBy(Age~agecat, data = data1, FUN=siterange)
+
+# 로그인한 사용자에게만 나이와 성별 부여
+summaryBy(Gender+Signed_In+Impressions+Clicks~agecat, data = data1, FUN=siterange)
+
+# install.packages("ggplot2")
+library(ggplot2)
+ggplot(data1, aes(x=Impressions, fill=agecat)) + geom_histogram(binwidth=1)
+ggplot(data1, aes(x=agecat, y=Impressions, fill=agecat)) + geom_boxplot()
+```
+
+---------------------------
+
+### 나이 범주에 대한 노출횟수와 클릭률 파악
+
+```{r}
+# 클릭률 생성하기
+# 만약 광고노출이 없다면 클릭에 대해 신경 쓰지 않는다.
+# 만약 광고노출 없이 클릭이 존재한다면 이에 대한 내 가정은
+# 이 데이터는 잘못된 것이다.
+data1$hashimps <- cut(data1$Impressions, c(-Inf, 0, Inf))
+head(data1)
+summaryBy(Clicks~hasimps, data = data1, FUN=siterange)
+
+# 광고 노출이 0 이상인 자료 중에서, CRT(Click-Throught-Rate=#clikcs/#impressions)
+ggplot(subset(data1, Impressions>0), aes(x=Clicks/Impressions, colour=agecat)) + geom_density()
+
+# 클릭이 0 이상인 자료 중에서 연령범주별, CRT 분포
+ggplot(subset(data1, Clicks>0), aes(x=Clicks/Impressions, colour=agecat)) + geom_density()
+
+# 클릭이 0 이상인 자료 중에서 연령범주별, 클릭 
+ggplot(subset(data1, Clicks>0), aes(x=agecat, y=Clicks, colour=agecat)) + geom_boxplot()
+
+# 클릭이 0 이상인 자료 중에서 연령범주별, 클릭 
+ggplot(subset(data1, Clicks>0), aes(x=agecat, colour=agecat)) + geom_density()
+
+```
+
+---------------------------
+
+### 클릭 행동에 기반한 사용자 범주화
+
+```{r}
+
+head(data1)
+
+# 범주화 하기 
+data1$scode[data1$Impressions==0] <- "NoImps"
+data1$scode[data1$Impressions>0] <- "Imps"
+data1$scode[data1$Clicks>0] <- "Clicks"
+head(data1)
+str(data1)
+
+# scode의 자료형을 factor로 변환하기
+data1$scode <- factor(data1$scode)
+head(data1)
+str(data1)
+
+# 요인(factor)의 수준(level) 확인하기
+clen <- function(x){c(length(x))}
+etable <- summaryBy(Impressions~scode+Gender+agecat, data=data1, Fun=clen)
+etable
+```
+
+
+
+---------------------------
+
+# 참고문헌
+ * [1] Doing Data Science - http://shop.oreilly.com/product/0636920028529.do
