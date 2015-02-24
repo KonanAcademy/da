@@ -1,0 +1,16 @@
+Jinja2==2.7.3
+Markdown==2.5.2
+MarkupSafe==0.23
+Pygments==2.0.2
+ipython==2.3.1
+matplotlib==1.4.2
+nose==1.3.4
+numpy==1.9.1
+pandas==0.15.2
+pytz==2014.10
+pyzmq==14.4.1
+requests==2.5.1
+scikit-learn==0.15.2
+scipy==0.14.0
+six==1.8.0
+tornado==4.0.2
